@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -23,6 +23,7 @@ namespace OpenVR_Autostarter
         bool firstProgramStartup = true;
         bool readyToDie = false;
         bool isMainFormShown = false;
+        CVRSystem cvr = null;
 
         public AutostarterConfig config;
 
@@ -194,21 +195,25 @@ namespace OpenVR_Autostarter
 
         private async void TimerOpenVRPolling_Tick(object sender, EventArgs e)
         {
-            EVRInitError peError = EVRInitError.None;
-            CVRSystem cvr = await Task.Run(() => { return OpenVR.Init(ref peError, EVRApplicationType.VRApplication_Background); });
-
-            if (peError != EVRInitError.None)
+            if (!openvr_active)
             {
-                openvr_active = false;
-                timerOpenVRPolling.Interval = 5000;
+                EVRInitError peError = EVRInitError.None;
+                cvr = await Task.Run(() => { return OpenVR.Init(ref peError, EVRApplicationType.VRApplication_Background); });
 
-                if (firstProgramStartup)
+                if (peError != EVRInitError.None)
                 {
-                    ShowTracked();
+                    openvr_active = false;
+                    timerOpenVRPolling.Interval = 5000;
+
+                    if (firstProgramStartup)
+                    {
+                        ShowTracked();
+                    }
+                    firstProgramStartup = false;
+                    return;
                 }
-                firstProgramStartup = false;
-                return;
             }
+
             firstProgramStartup = false;
 
             if (openvr_active == false)
@@ -222,7 +227,7 @@ namespace OpenVR_Autostarter
                 timerOpenVRPolling.Enabled = true;
             }
 
-            timerOpenVRPolling.Interval = 2000;
+            timerOpenVRPolling.Interval = 500;
 
             VREvent_t ev = new VREvent_t() { };
             while (cvr.PollNextEvent(ref ev, uint.MaxValue))
